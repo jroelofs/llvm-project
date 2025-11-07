@@ -1744,6 +1744,7 @@ void AArch64EpilogueEmitter::finalizeEpilogue() const {
   }
   if (EmitCFI)
     emitCalleeSavedGPRRestores(MBB.getFirstTerminator());
+
   if (AFI->shouldSignReturnAddress(MF)) {
     // If pac-ret+leaf is in effect, PAUTH_EPILOGUE pseudo instructions
     // are inserted by emitPacRetPlusLeafHardening().

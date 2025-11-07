@@ -592,7 +592,7 @@ public:
   }
 
   bool shouldSignReturnAddress(const MachineFunction &MF) const;
-  bool shouldSignReturnAddress(bool SpillsLR) const;
+  bool shouldSignReturnAddress(const MachineFunction &MF, bool SpillsLR) const;
 
   bool needsShadowCallStackPrologueEpilogue(MachineFunction &MF) const;
 

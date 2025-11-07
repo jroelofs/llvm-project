@@ -14,8 +14,10 @@
 #include "AArch64Subtarget.h"
 #include "llvm/CodeGen/CFIInstBuilder.h"
 #include "llvm/CodeGen/MachineBasicBlock.h"
+#include "llvm/CodeGen/MachineFrameInfo.h"
 #include "llvm/CodeGen/MachineInstrBuilder.h"
 #include "llvm/CodeGen/MachineModuleInfo.h"
+#include "llvm/IR/CallingConv.h"
 
 using namespace llvm;
 using namespace llvm::AArch64PAuth;
@@ -96,6 +98,9 @@ static void emitPACCFI(MachineBasicBlock &MBB, MachineBasicBlock::iterator MBBI,
   if (!EmitCFI)
     return;
 
+  if (MBB.getParent()->getTarget().getTargetTriple().isOSDarwin())
+    return;
+
   auto &MF = *MBB.getParent();
   auto &MFnI = *MF.getInfo<AArch64FunctionInfo>();
 
@@ -116,7 +121,7 @@ void AArch64PointerAuth::signLR(MachineFunction &MF,
   // Debug location must be unknown, see AArch64FrameLowering::emitPrologue.
   DebugLoc DL;
 
-  if (UseBKey) {
+  if (UseBKey && !MF.getTarget().getTargetTriple().isOSDarwin()) {
     BuildMI(MBB, MBBI, DL, TII->get(AArch64::EMITBKEY))
         .setMIFlag(MachineInstr::FrameSetup);
   }
@@ -133,8 +138,7 @@ void AArch64PointerAuth::signLR(MachineFunction &MF,
   if (MFnI.branchProtectionPAuthLR() && Subtarget->hasPAuthLR()) {
     emitPACCFI(MBB, MBBI, MachineInstr::FrameSetup, EmitCFI);
     BuildMI(MBB, MBBI, DL,
-            TII->get(MFnI.shouldSignWithBKey() ? AArch64::PACIBSPPC
-                                               : AArch64::PACIASPPC))
+            TII->get(UseBKey ? AArch64::PACIBSPPC : AArch64::PACIASPPC))
         .setMIFlag(MachineInstr::FrameSetup)
         ->setPreInstrSymbol(MF, MFnI.getSigningInstrLabel());
   } else {
@@ -142,8 +146,7 @@ void AArch64PointerAuth::signLR(MachineFunction &MF,
     if (MFnI.branchProtectionPAuthLR())
       emitPACCFI(MBB, MBBI, MachineInstr::FrameSetup, EmitCFI);
     BuildMI(MBB, MBBI, DL,
-            TII->get(MFnI.shouldSignWithBKey() ? AArch64::PACIBSP
-                                               : AArch64::PACIASP))
+            TII->get(UseBKey ? AArch64::PACIBSP : AArch64::PACIASP))
         .setMIFlag(MachineInstr::FrameSetup)
         ->setPreInstrSymbol(MF, MFnI.getSigningInstrLabel());
     if (!MFnI.branchProtectionPAuthLR())
